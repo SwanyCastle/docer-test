@@ -31,7 +31,7 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = ["ec2-13-124-35-222.ap-northeast-2.compute.amazonaws.com"]
+ALLOWED_HOSTS = ["13.124.35.222", "ec2-13-124-35-222.ap-northeast-2.compute.amazonaws.com", "127.0.0.1"]
 
 
 # Application definition
@@ -174,7 +174,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "HOST": env("DB_HOST"),
+        # "HOST": env("DB_HOST"),
+        "HOST": "localhost",
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env("DB_PASSWORD"),
