@@ -31,7 +31,7 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = ["13.124.35.222", "ec2-13-124-35-222.ap-northeast-2.compute.amazonaws.com", "127.0.0.1"]
+ALLOWED_HOSTS = ["ec2-3-35-138-155.ap-northeast-2.compute.amazonaws.com", "3.35.138.155", "red-ribbon.shop"]
 
 
 # Application definition
@@ -116,9 +116,9 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     # Swagger UI에서 API 문서에 대한 제목 설정
-    'TITLE': 'My Project API',
+    'TITLE': 'Red Ribbon API',
     # API 문서에 대한 설명 설정 (선택 사항)
-    'DESCRIPTION': 'API documentation for My Project',
+    'DESCRIPTION': 'API documentation for Red Ribbon',
     # API 문서의 버전 설정
     'VERSION': '1.0.0',
     # 사용할 스키마 생성자 설정
@@ -174,8 +174,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        # "HOST": env("DB_HOST"),
-        "HOST": "localhost",
+        "HOST": env("DB_HOST"),
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env("DB_PASSWORD"),
@@ -226,7 +225,7 @@ STATIC_ROOT = BASE_DIR / "static"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS 설정
-CORS_ALLOWED_ORIGINS = ['http://127.0.0.1:5173', 'http://127.0.0.1:8000']
+CORS_ALLOWED_ORIGINS = ['http://127.0.0.1:5173']
 
 CORS_ALLOW_CREDENTIALS = True
 

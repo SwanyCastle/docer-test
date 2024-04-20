@@ -7,9 +7,10 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 
 from .models import Member
-from .serializers import MemberSerializer, MyTokenObtainPairSerializer
+from .serializers import MemberSerializer, LogoutSerializer, MyTokenObtainPairSerializer
 from config.settings import env
 
 import boto3
@@ -17,6 +18,7 @@ import boto3
 
 class RegisterMember(APIView):
     permission_classes = [AllowAny]
+    serializer_class = MemberSerializer
 
     def post(self, request):
         email = request.data.get('email')
@@ -29,7 +31,7 @@ class RegisterMember(APIView):
                 }, 
                 status=status.HTTP_409_CONFLICT
             )
-        serializer = MemberSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
             response = {
@@ -42,11 +44,11 @@ class RegisterMember(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = MemberSerializer
 
     def post(self, request):
         email = request.data.get("email")
         password = request.data.get("password")
-
         member = Member.objects.filter(email=email).first()
 
         if member is None:
@@ -66,8 +68,7 @@ class LoginView(APIView):
             token = serializer.get_token(member)
             refresh_token = str(token)
             access_token = str(token.access_token)
-
-            serializer = MemberSerializer(member)
+            serializer = self.serializer_class(member)
             response = Response(
                 data={
                     "status_code": 200,
@@ -100,8 +101,10 @@ class RefreshTokenView(TokenRefreshView):
 
 
 class LogoutView(APIView):
+    serializer_class = LogoutSerializer
+
     def post(self, request):
-        refresh_token = request.COOKIES.get("refreshToken")
+        refresh_token = request.data["refresh"]
         if refresh_token is None:
             return Response(
                 data={
@@ -119,8 +122,6 @@ class LogoutView(APIView):
                 },
                 status=status.HTTP_200_OK
             )
-            response.delete_cookie("access")
-            response.delete_cookie("refresh")
             return response
         except Exception as e:
             return Response(
@@ -132,6 +133,8 @@ class LogoutView(APIView):
 
 
 class MemberDetailView(APIView):
+    serializer_class = MemberSerializer
+
     def get_member(self, request, member_id):
         try:
             jwt_authenticator = JWTAuthentication()
@@ -150,7 +153,7 @@ class MemberDetailView(APIView):
         member_id = get_member_id(request=request)
         member = self.get_member(request=request, member_id=member_id)
         if member:
-            serializer = MemberSerializer(member)
+            serializer = self.serializer_class(member)
             response = {
                 "status_code": 200,
                 "message": "Success",
@@ -176,10 +179,10 @@ class MemberDetailView(APIView):
                 }, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = MemberSerializer(member, data=request.data, partial=True)
+        serializer = self.serializer_class(member, data=request.data, partial=True)
         if serializer.is_valid():
             member = serializer.save()
-            serializer = MemberSerializer(member)
+            serializer = self.serializer_class(member)
             response = {
                 "status_code": 201,
                 "message": "Success",
@@ -210,7 +213,7 @@ class MemberDetailView(APIView):
 
 
 class UploadProfileImageView(APIView):
-    def upload_image_to_naver_cloud(self, image_file):
+    def upload_image_to_naver_cloud(self, image_file, member_id):
         try:
             ncloud = boto3.client(
                 's3',
@@ -220,8 +223,9 @@ class UploadProfileImageView(APIView):
                 region_name=env("NCLOUD_REGION_NAME")
             )
             bucket_name = env("NCLOUD_BUCKET_NAME")
-            ncloud.upload_fileobj(image_file, bucket_name, image_file.name)
-            image_url = f"{env('NCLOUD_ENDPOINT_URL')}/{bucket_name}/{image_file.name}"
+            file_name = f"{member_id}_{image_file.name}"
+            ncloud.upload_fileobj(image_file, bucket_name, file_name)
+            image_url = f"{env('NCLOUD_ENDPOINT_URL')}/{bucket_name}/{file_name}"
             return image_url
         except Exception as e:
             return f"error: {str(e)}"
@@ -248,7 +252,7 @@ class UploadProfileImageView(APIView):
                 }, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-        image_url = self.upload_image_to_naver_cloud(image_file)
+        image_url = self.upload_image_to_naver_cloud(image_file, member_id)
         if "error" not in image_url:
             member.image = image_url
             member.save()
@@ -271,21 +275,21 @@ class UploadProfileImageView(APIView):
 
 @staticmethod
 def get_member_id(request):
-    auth_header = request.headers.get('Authorization')
+    auth_header = request.headers.get("Authorization")
 
     if not auth_header:
-        raise AuthenticationFailed('Authorization header not provided')
+        raise AuthenticationFailed("인증 헤더가 제공되지 않았습니다.")
 
     try:
         token_type, token = auth_header.split()
         if token_type != 'Bearer':
-            raise AuthenticationFailed('Invalid token type')
+            raise AuthenticationFailed("잘못된 토큰 타입입니다.")
         
         access_token = AccessToken(token)
-        member_id = access_token.payload.get('id')
+        member_id = access_token.payload.get("id")
         
         return member_id
     except ValueError:
-        raise AuthenticationFailed('Invalid token format')
+        raise AuthenticationFailed("잘못된 토큰 형식입니다.")
     except Exception as e:
-        raise AuthenticationFailed('Invalid token')
+        raise AuthenticationFailed("잘못된 토큰입니다.")
